@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - verification_code_custom (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - verification_code_custom (from `.symlinks/plugins/verification_code_custom/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  verification_code_custom:
+    :path: ".symlinks/plugins/verification_code_custom/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
+  verification_code_custom: 7faaf47e07935add276ac33f35570ce4fc09afdb
+
+PODFILE CHECKSUM: aafe91acc616949ddb318b77800a7f51bffa2a4c
+
+COCOAPODS: 1.10.1
