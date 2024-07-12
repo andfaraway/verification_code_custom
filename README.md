@@ -1,6 +1,24 @@
-# verification_code_custom
-
 A new flutter custom verification code plug-in
 
-![Image text](https://github.com/andfaraway/verification_code_custom/blob/master/example.gif)
+## Getting started
+
+Just easier to used ,you will like it. and give me a start,think you.
+
+```dart
+import 'package:verification_code_custom/verification_code_custom.dart';
+```
+
+```dart
+  Widget verificationCodeWidget(){
+  return VerificationCodeCustom(
+    textResult: (text) {
+      /// do something
+    },
+  );
+}
+```
+
+![example.gif](example.gif)
+
+
 

@@ -1,242 +1,278 @@
-import 'package:flutter/services.dart';
+import 'dart:developer';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:verification_code_custom/src/custom_text_input_mask.dart';
+import 'package:verification_code_custom/src/code_item_model.dart';
+
+typedef ItemBuilder = Widget Function(String text, bool isSelected);
 
 class VerificationCodeCustom extends StatefulWidget {
-  ///验证码数组
-  final Function(List<String>) textChanged;
+  final ItemBuilder? itemBuilder;
 
-  ///itemCount 验证码长度：4或6，默认是6
+  final CodeType codeType;
+
+  /// 返回结果
+  final Function(String) textResult;
+
+  ///itemCount 验证码长度：4或6，默认是4
   final int itemCount;
 
   ///是否自动获取焦点
-  final autofocus;
+  final bool autofocus;
 
-  VerificationCodeCustom(
-      {required this.textChanged, this.itemCount = 4, this.autofocus = true});
+  const VerificationCodeCustom({
+    super.key,
+    required this.textResult,
+    this.itemBuilder,
+    this.itemCount = 4,
+    this.autofocus = false,
+    this.codeType = CodeType.num,
+  });
 
   @override
-  _VerificationCodeCustomState createState() =>
-      _VerificationCodeCustomState(this.textChanged, this.itemCount);
+  State<VerificationCodeCustom> createState() => _VerificationCodeCustomState();
 }
 
 class _VerificationCodeCustomState extends State<VerificationCodeCustom> {
-  Function textChanged;
-  final int itemCount;
+  late Function textChanged;
 
-  _VerificationCodeCustomState(this.textChanged, this.itemCount);
+  _VerificationCodeCustomState();
 
-  final double width = 40;
+  List<CodeItemModel> items = [];
 
-  List<FocusNode> focusNodeList = [];
-  List<String> textList = [];
+  late CodeItemModel currentModel;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
 
-    for (int i = 0; i < itemCount; i++) {
-      FocusNode focusNode = FocusNode();
-      focusNodeList.add(focusNode);
-      textList.add('');
-    }
-  }
+    items = List.generate(widget.itemCount, (index) => CodeItemModel(index: index));
 
-  @override
-  void didChangeDependencies() {
-    // TODO: implement didChangeDependencies
-    super.didChangeDependencies();
+    currentModel = items.first;
+
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      if (widget.autofocus) {
+        Future.delayed(const Duration(seconds: 1),(){
+          currentModel.requestFocus();
+          setState(() {});
+        });
+      }
+    });
+
+    // SystemChannels.lifecycle.setMessageHandler((message) async {
+    //   print('message = $message');
+    //   return message;
+    // });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      child: Stack(
+    return RawKeyboardListener(
+      focusNode: FocusNode(),
+      // autofocus: true,
+      onKey: (RawKeyEvent event) {
+        if (event is RawKeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.backspace) {
+            print('backspace');
+            if(Platform.isAndroid){
+              onChanged('');
+            }
+          }
+        }
+      },
+      child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: _textFieldList(),
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: items.map((e) => _buildItem(e)).toList(),
           ),
-          GestureDetector(
-            onTap: () {
-              for (int i = textList.length - 1; i >= 0; i--) {
-                String text = textList[i];
-
-                if ((text.length > 0 && text != ' ') || i == 0) {
-                  if (i < textList.length - 1 && i != 0) {
-                    _getFocus(focusNodeList[i + 1]);
-                    if (textList[i + 1].length == 0) {
-                      textList[i + 1] = ' ';
-                    }
-                  } else if (i == textList.length - 1) {
-                    _getFocus(focusNodeList[i]);
-                  } else {
-                    if(widget.autofocus){
-                      _getFocus(focusNodeList[1]);
-                    }else{
-                      _getFocus(focusNodeList[0]);
-                    }
-                  }
-                  break;
-                }
-              }
-            },
-            child: Container(
-              color: Colors.transparent,
-              height: 60,
-              width: MediaQuery.of(context).size.width,
-            ),
-          )
         ],
       ),
     );
   }
 
-  _textFieldList() {
-    List<Widget> list = [];
-    list.add(Container(
-      width: width,
-      child:
-      _textField(index: 0, text: textList[0], focusNode: focusNodeList[0]),
-    ));
-    list.add(Container(
-      width: width,
-      child:
-      _textField(index: 1, text: textList[1], focusNode: focusNodeList[1]),
-    ));
-    list.add(Container(
-      width: width,
-      child:
-      _textField(index: 2, text: textList[2], focusNode: focusNodeList[2]),
-    ));
-    list.add(Container(
-      width: width,
-      child:
-      _textField(index: 3, text: textList[3], focusNode: focusNodeList[3]),
-    ));
-
-    if (itemCount == 6) {
-      list.add(Container(
-        width: width,
-        child: _textField(
-            index: 4, text: textList[4], focusNode: focusNodeList[4]),
-      ));
-      list.add(Container(
-        width: width,
-        child: _textField(
-            index: 5, text: textList[5], focusNode: focusNodeList[5]),
-      ));
-    }
-    return list;
-  }
-
-  _textField(
-      {required int index,
-        required String text,
-        required FocusNode focusNode}) {
-    TextEditingController _controller = TextEditingController(text: text);
-    _controller.selection = TextSelection.fromPosition(
-        TextPosition(affinity: TextAffinity.downstream, offset: text.length));
-
-    return TextField(
-      controller: _controller,
-      focusNode: focusNode,
-      autofocus: index == 0 ? widget.autofocus : false,
-      decoration: InputDecoration(
-        hintStyle: TextStyle(color: Color(0xff8C8C8C), fontSize: 14),
-        focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFFFD3B60), width: 1)),
-        enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: Color(0xffDADADA), width: 1)),
-        fillColor: Colors.transparent,
-        filled: true,
-      ),
-      scrollPadding: EdgeInsets.all(200),
-      textAlign: TextAlign.center,
-      style: TextStyle(
-          color: Color(0xFF333333), fontSize: 22, fontWeight: FontWeight.bold),
-      cursorWidth: 0,
-      keyboardType: TextInputType.number,
-      onChanged: (value) {
-        if (value.length > 1) {
-          if (value.substring(0, 1) == ' ') {
-            value = value.substring(1, value.length);
-          }
-        }
-        //输入非数字，不变
-        if (!RegExp('^[0-9]*\$').hasMatch(value)) {
-          setState(() {});
-          return;
-        } else {}
-
-        String oldStr = textList[index];
-
-        //输入值为复制的验证码
-        if (value.length == itemCount || value.length == itemCount + 1) {
-          if (value.length == itemCount + 1) {
-            if (oldStr == value.substring(0, 1)) {
-              //删除第一位
-              value = value.substring(1);
-            } else {
-              //删除最后一位
-              value = value.substring(0, value.length - 1);
-            }
-          }
-
-          //所有重新赋值
-          for (int i = 0; i < textList.length; i++) {
-            textList[i] = value.substring(i, i + 1);
-          }
-          _loseFocus(focusNodeList[index]);
-          setState(() {});
-          textChanged(textList);
-          return;
-        }
-
-        //删除字符
-        if (value.length == 0) {
-          //焦点前移
-          if (index > 0) {
-            if (index == textList.length - 1) {
-              //最后一位
-              if (textList[index] == ' ') {
-                _getFocus(focusNodeList[index - 1]);
-                textList[index - 1] = ' ';
-              }
-            } else {
-              _getFocus(focusNodeList[index - 1]);
-              textList[index - 1] = ' ';
-            }
-          }
-          textList[index] = ' ';
-
-          setState(() {});
-          textChanged(textList);
-        } else {
-          //赋值
-          textList[index] = value;
-          //焦点后移
-          if (index < focusNodeList.length - 1) {
-            _getFocus(focusNodeList[index + 1]);
-            textList[index + 1] = ' ';
-          } else {
-            _loseFocus(focusNodeList[index]);
-          }
-          setState(() {});
-          textChanged(textList);
-        }
+  Widget _buildItem(CodeItemModel model) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: (detail) {
+        _showCopyWidget(
+            pasteText: 'Paste',
+            offset: detail.globalPosition - detail.localPosition,
+            onTap: () async {
+              currentModel.unFocus();
+              String text = (await Clipboard.getData(Clipboard.kTextPlain))?.text ?? '';
+              inputCopyText(text);
+            });
       },
+      onTap: () {
+        model.requestFocus();
+        currentModel = model;
+      },
+      child: ListenableBuilder(
+          listenable: model,
+          builder: (context, _) {
+            Widget child = const SizedBox.shrink();
+            if (widget.itemBuilder != null) {
+              child = widget.itemBuilder!.call(model.text, model.hasFocus);
+            } else {
+              String text = model.text;
+              Color color = model.hasFocus ? Colors.redAccent : Colors.grey;
+              child =  Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: color)),
+                alignment: Alignment.center,
+                child: Text(text),
+              );
+            }
+            return Stack(
+              children: [
+                SizedBox(
+                  width: 1,
+                  height: 1,
+                  child: TextField(
+                    enableInteractiveSelection: false,
+                    controller: model.controller,
+                    focusNode: model.focusNode,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      CustomTextInputMask(
+                        codeType: widget.codeType,
+                        copyCallBack: inputCopyText,
+                        onChanged: onChanged,
+                      ),
+                    ],
+                  ),
+                ),
+                child,
+              ],
+            );
+          }),
     );
   }
 
-  ///获取焦点
-  _getFocus(FocusNode focusNode) {
-    FocusScope.of(context).requestFocus(focusNode);
+  onChanged(value) {
+    testLog('onChanged = $value');
+    currentModel.text = value;
+    if (value.isNotEmpty) {
+      next();
+    } else {
+      back();
+    }
   }
 
-  ///失去焦点
-  _loseFocus(FocusNode focusNode) {
-    focusNode.unfocus();
+  back() {
+    if (currentModel.index > 0) {
+      items[currentModel.index - 1].requestFocus();
+      currentModel = items[currentModel.index - 1];
+    }
+    temp = true;
+  }
+
+  bool temp = true;
+
+  next() {
+    if (currentModel.index < widget.itemCount - 1) {
+      items[currentModel.index + 1].requestFocus();
+      currentModel = items[currentModel.index + 1];
+    }
+
+    for (final i in items) {
+      if (i.text.isEmpty) {
+        testLog('i => ${i.text},${i.index}');
+        return;
+      }
+    }
+
+    if (currentModel.index == widget.itemCount - 1) {
+      if (temp) {
+        hideKeyboard(context);
+        temp = false;
+      } else {
+        temp = true;
+      }
+    }
+    widget.textResult(items.map((e) => e.text).toList().join(''));
+  }
+
+  inputCopyText(String text) {
+    if (!widget.codeType.copyRegExp(widget.itemCount).hasMatch(text)) {
+      return;
+    }
+    testLog('input copy text:$text');
+    for (int i = 0; i < text.length; i++) {
+      items[i].controller.text = text.substring(i, i + 1);
+    }
+    hideKeyboard(context);
+    widget.textResult(text);
+  }
+
+  _showCopyWidget({required String pasteText, required Offset offset, required VoidCallback onTap}) {
+    showDialog(
+        context: context,
+        useSafeArea: false,
+        barrierColor: Colors.transparent,
+        anchorPoint: offset,
+        builder: (context) {
+          double dx = offset.dx;
+          double dy = offset.dy;
+
+          double screenWidth = MediaQuery.of(context).size.width;
+          // double screenHeight = MediaQuery.of(context).size.height;
+
+          if (dx > screenWidth - 80) {
+            dx -= 20;
+          }
+          dy -= 35;
+          return Stack(
+            children: [
+              Positioned(
+                top: dy,
+                left: dx,
+                child: GestureDetector(
+                  onTap: () {
+                    onTap();
+                    Navigator.of(context).pop();
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(.1), offset: Offset.zero, blurRadius: 4, spreadRadius: 2),
+                    ]),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+                    child: const Text('Paste'),
+                  ),
+                ),
+              ),
+            ],
+          );
+        });
+  }
+
+  void hideKeyboard(BuildContext context) {
+    FocusScopeNode currentFocus = FocusScope.of(context);
+    if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
   }
 }
+
+enum CodeType { num, char, all }
+
+extension CodeTypeEx on CodeType {
+  RegExp get regExp => switch (this) {
+        CodeType.num => RegExp(r'^[0-9]?$'),
+        CodeType.char => RegExp(r'^[a-zA-Z]?$'),
+        CodeType.all => RegExp(r'^[0-9a-zA-Z]?$'),
+      };
+
+  RegExp copyRegExp(int length) => switch (this) {
+        CodeType.num => RegExp('^[0-9]{$length}\$'),
+        CodeType.char => RegExp('^[a-zA-Z]{$length}\$'),
+        CodeType.all => RegExp('^[0-9a-zA-Z]{$length}\$'),
+      };
+}
+
+testLog(String text) => log(text);

@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:verification_code_custom/verification_code_custom.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
-
   @override
   void initState() {
     super.initState();
@@ -21,23 +21,34 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Verification_code_custom'),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(28.0),
-            child: VerificationCodeCustom(textChanged: (list) {
-              print(list);
-              String result = '';
-              for(String str in list){
-                result += str;
-              }
-            },),
+      home: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Verification_code_custom'),
+          ),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 100),
+                child: verificationCodeWidget(),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  Widget verificationCodeWidget(){
+    return VerificationCodeCustom(
+      textResult: (text) {
+        /// do something
+      },
+    );
+  }
 }
+
+
